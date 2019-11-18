@@ -1,0 +1,449 @@
+##################################
+Entity Framework Core
+#################################
+
+   opção no VS  - > Console do Gerenciador de Pacotes
+--instalando o entity
+Install-Package Microsoft.EntityFrameworkCore.SqlServer -Version 1.1
+
+##################################################
+				Context
+##################################################
+Essa classe possui o conceito no Entity de contexto da aplicação. Como o modelo de negócios do projeto é uma loja,
+então mudaremos a chamada ao DAO para a classe LojaContext(). 
+É uma convenção chamarmos as classe pelo modelo de negócios seguido do sufixo Context.
+Também trocaremos o nome da variável repo para contexto.
+
+
+#################################################
+		USANDO PERSISTENCIA DO ENTIRY
+##################################################
+  -- CONEXAO NA LojaContext 
+  public class LojaContext : DbContext
+    {
+           /*
+           Qual classes  queremos persistit pelo entity?
+            <Produto>   = Classe no c#
+            Produtos    = Nome da tabela no banco de dados
+        */
+        public DbSet<Produto> Produtos { get; set; }
+
+        //Definindo o banco de dados e onde ele fica.
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            optionsBuilder.UseSqlServer("Data Source=DRI-EDI;Initial Catalog=LojaDB;Persist Security Info=True;User ID=sa;Password=edi123");
+        }
+
+    }
+	
+########################################
+incluindo dados - no formato entity 
+########################################
+private static void GravarUsandoEntity()
+        {
+            Produto p = new Produto();
+            p.Nome = "Harry Potter e a Ordem da Fênix";
+            p.Categoria = "Livros";
+            p.Preco = 19.89;
+
+            Produto p2 = new Produto();
+            p2.Nome = "Livro awe api";
+            p2.Categoria = "Livros";
+            p2.Preco = 19.00;
+
+
+            using (var contexto = new LojaContext())
+            {
+                contexto.Produtos.Add(p);
+                contexto.Produtos.Add(p2);
+                contexto.SaveChanges();
+            }
+        }
+
+
+#####################################################
+Recuperando objetos com o Entity
+#####################################################
+private static void RecuperaProdutos()
+{
+    using (var repo = new LojaContext())
+    {
+        IList<Produto> produtos = repo.Produtos.ToList();
+        foreach (var item in produtos)
+        {
+            Console.WriteLine(item.Nome);
+        }
+    }
+}
+
+#####################################################
+Deletando objetos com o Entity
+#####################################################
+private static void ExcluirProdutos()
+{
+    using(var repo = new LojaContext())
+    {
+        IList<Produto> produtos = repo.Produtos.ToList();
+        foreach(var item in produtos)
+        {
+            repo.Produtos.Remove(item);// excluindo todos pois esta sm criterios.
+        }
+        repo.SaveChanges();
+    }
+}
+public void ExcluiTarifa(Tarifa tarifa)
+{
+    using(var contexto = new BancoContext())
+    {
+        contexto.Tarifas.Remove(tarifa);
+		contexto.SaveChanges();
+    }
+}
+#####################################################
+Atualizando objetos com o Entity
+#####################################################
+
+Exmplo de atualização sem usar uma Interface.
+
+// Firs t= Top 1  - recupera produto
+//Produto primeiroProduto = repo.Produtos.First();
+
+//Editanto  o produto recuperado.
+//primeiroProduto.Nome = "ednaldo-editado";
+//primeiroProduto.Preco = 55.00;
+//repo.Produtos.Update(primeiroProduto);
+//repo.SaveChanges();
+
+
+#### Exmplo uma classe de Inteface:
+ private static void AtualizandoProdutoComEntityCore()
+        {
+            using (var repo = new ProdutoDAOEntity())
+            {
+
+                // Firs t= Top 1  - recupera produto
+                Produto primeiroProduto = repo.Produtos().First();
+
+                //Editanto  o produto recuperado.
+                primeiroProduto.Nome = "ednaldo-editado";
+                primeiroProduto.Preco = 55.00;
+            }
+        }
+
+#####################################################
+		O ChangeTracker e os estados Unchanged e Modified
+#####################################################
+
+Unchange =  nada foi alterado.
+Modified =  estado alterado  da entitidade.
+
+O Entity monitora o estado do contexto. OU seja objeto.
+
+#####################################################
+					04 O estado Added
+#####################################################
+Estado ao adiconar novo produto...
+
+
+#####################################################
+					06 Deleted e Detached
+#####################################################
+Deleted:Deletado do contexto
+Detached  = Este estado representa que o objeto não está sendo monitorado
+
+Correto! Como o objeto já estava sendo monitorado pois o método Add() foi utilizado , 
+ao utilizarmos o método Remove() ele vai para o estado de Detached diretamente, pois ele ainda não foi para o banco.
+
+
+
+#####################################################################
+Visão geral do relacionamento entre os estados
+#####################################################################
+select = Produtos.Tolist().
+
+
+				#####################################################################
+						AULA 04 Sincronizando o banco de dados com o modelo de classes
+				#####################################################################
+				
+				
+
+-Migration   = Manipulação de estruturas de banco de dados.
+instalado o Migration ->Install-Package Microsoft.EntityFrameworkCore.Tools -Version 1.1.1
+
+
+#####################################################################
+					O processo de migração
+#####################################################################
+
+
+	-> Os seguintes comandos do Entity Framework Core estão disponíveis.
+
+Cmdlet                      			Description
+--------------------------  ---------------------------------------------------
+Add-Migration               Adds a new migration.
+
+Drop-Database               Drops the database.
+
+Remove-Migration            Removes the last migration.
+
+Scaffold-DbContext          Scaffolds a DbContext and entity types for a database.
+
+Script-Migration            Generates a SQL script from migrations.
+
+Update-Database             Updates the database to a specified migration.
+
+
+SEE ALSO:
+Add-Migration
+Drop-Database
+Remove-Migration
+Scaffold-DbContext
+Script-Migration
+Update-Database
+
+
+=>Estrategia do entity para fazer a MIgração tem 2 Passos.
+1-Registrar a migração (migration). OU seja 
+Aviso que tenho uma nova versão pra ser sicronizada com o banco de dados.
+Para o 1 passo usamos o comando: Add-Migration
+
+2-Passo pode ser feito de 2 maneiras diferentes.
+	1- Gerar um script com o comando Script-Migration e entregar para DBA responsavel.
+	   Esse processo é muito comum.
+	2- Usamos o comando "Update-Database" para atualizar o banco de dados, 
+	ou seja ele vai pegar a versão mais recente.No qual usamos o "add-migration", no 1 passo.
+
+
+
+==>Exmplo pratico 1 passo <==
+Add-Migration Unidade
+Apos  execução . Teremos uma Pasta nova MIgration.
+
+Foi gerado 2 métodos:
+metodo ->  protected override void Up , para subir a versão mais atualizar
+metodo ->protected override void Down
+
+=>Exemplo prático 2 passo:
+-Verbose  = Usado para mostra o que esta acontecendo.
+Executar o comando abaixo pra efetivar a execução no banco de dados.
+Update-Database -Verbose
+
+Obs:
+Após o comando executado, também é criado uma nova tabela "EFMigrationsHistory"
+para controlar as versões, ou seja historico de migrations.
+
+
+==>  Temos duas situação <==
+-Temos que ter 2 verções 
+1- Para Banco novo e suas respectivas tabelas.
+2- Para Atualizar o banco que ja existe no caso (tabelas)...
+
+
+
+#############################################################
+06-Corrigindo problemas e aplicando as migrações no banco
+Desfazer meu migration.
+############################################################
+Exemplo:
+
+Obs: Temos que excluir
+1 passo - vai no banco e apaga a tabela "History"
+2 passo -  a aplicação apagar a paste "Migration"
+
+Obs:Reconsruir
+ação:
+1-  criar versao com as tabelas  originais.
+     -criando versao inicial do projeto "Add-Migration Inicial"
+2-  criar versao com as novas mudanças das tabelas 
+    - Faz as algerações das models ex: Alteração de propriedades e ou criação de novos.
+    - "Add-Migration Inicial"
+
+
+### Após criar as MIgration Incila e Unidade  ###
+	Eu preciso rodar as migraçõs no banco de dados.
+
+Comando : Update-Database
+
+Passos:
+1-Eu comento o trecho "UP" , da versão Inicial.
+2-Executo a versão Inicial -> Update-Database Inicial
+  apenas para criar um registro na tabela "__EFMigrationsHistory".
+3- Agora eu executo o "Update-Database", e agora ele só vai chamar a migração
+"Unidade" porque a migration "Inicial" já foi executada no banco de dados.
+
+
+##########################################################
+	AULA 05 Relacionamentos Um para Muitos no Entity
+##########################################################
+
+:: 01 Relacionamento um para muitos  ::
+
+--Foi criado uma nova classe "Compras" , e preciso sincroniza estrutura das classes entidade, com a estrutura das tabelas no banco de dados.
+  ai eu Uso o MIgration para atualizar meu "Banco de dados" criando a tabela Compras.
+
+
+:: Corrigindo a migração para refletir o relacionamento ::
+Nesse caso no campo ProdutoId, nao estava obrigatório , tivemos que "remove" a migração , 
+criar a propriedades com o tipo int, e atuaalizar novamente "Update-Database Compras"
+ ok.
+ 
+ 
+:: 05 Inserindo objetos relacionados ::
+
+
+
+
+######################################################
+AULA 06 Relacionamentos Muitos para Muitos no Entity
+######################################################
+:: Relacionamento muitos para muitos e a classe de join ::
+
+OBS: NA VERSAO CORE DO ENTITY O MESMO NAO CRIA A 3 TABELA CONFORME A RELAÇÃO ABAIXO.
+TEREMOS QUE CRIAR A CLASS PARA ISSO ACONTECER.
+OU SEJA NESSA VERSAO NÓS É QUE CRIAMOS A 3 TABELA.
+
+
+==> ERRO AO  TENTAR CRIAR  O Migration
+Unable to determine the relationship represented by navigation property 'Produto.Promocoes' of type 'IList<Promocao>'. Either manually
+configure the relationship, or ignore this property from the model.
+
+
+EXEMPLO DE N:N
+public class Promocao
+    {
+        public int Id { get; internal set; }
+        public string Descricao { get; internal set; }
+        public DateTime DataInicio { get; internal set; }
+        public DateTime DataTerminio { get; internal set; }
+		
+		==>
+        public IList<PromocaoProduto> Produtos { get; internal set; }  // MUITAS PROMOÇÕES PARA MUITOS PRODUTOS N:N
+		==>
+    }
+	
+	public class Produto
+    {
+        public int Id { get; internal set; }
+        public string Nome { get; internal set; }
+        public string Categoria { get; internal set; }
+        public double PrecoUnitario { get; internal set; }
+        public string Unidade { get; internal set; }
+		
+		==>
+		 public IList<PromocaoProduto>Promocoes { get; set; }  // MUITOS PRODUTOS PARA MUITAS PROMOÇÕES N:N
+		==>
+
+    }
+
+
+
+
+:::  Mapeando chaves primárias compostas :::::::::::
+
+-Temosque criara terceira tabela
+ public class PromocaoProduto
+    {
+
+        /*
+         * Essa seria nossa terceita tabela 
+         * Produto - Promocao =  3 tabela PromocaoProduto usado para resgitrar os relacionadomentos de N:N
+         */
+
+
+        public int ProdutoId { get; set; }
+        public Produto Produto { get; set; }
+
+        public int PromocaoId { get; set; }
+        public Promocao Promocao { get; set; }
+		
+    }
+	
+e Criar a chave composta no Contrexto
+
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+	{
+		//Criando uma chave composta da tabela PromocaoProduto
+		modelBuilder
+			.Entity<PromocaoProduto>()
+			.HasKey(pp => new { pp.PromocaoId, pp.ProdutoId });
+		base.OnModelCreating(modelBuilder);
+	}
+
+
+############################################### 
+AULA 07 Relacionamentos Um para Um no Entity
+###############################################
+-Nese caso 1:1 NAO PRECISO CRIAR O DTSET DA TABELA ENDEREÇOOU SEJA 
+DATABELA SECUNDARIA.
+
+Shadow Properties
+Direto das Sombras ==> Shadow Properties 
+PRÓXIMA ATIVIDADE
+Selecione as alternativas que estejam relacionadas ao conceito de Shadow Properties para o Entity.
+solução:
+Shadow properties são propriedades que não existem na classe que representa sua entidade, mas existem na tabela.
+
+Para criar a shadow property UltimoLogin do tipo DateTime na classe Usuario, colocamos o código abaixo no método OnModelCreating.
+modelBuilder
+  .Entity<Usuario>()
+  .Property<DateTime>("UltimoLogin");
+
+Isso aí! Lembre-se de definir o tipo da propriedade (no caso DateTime).
+
+
+#######################################
+	Mudando o nome da tabela
+#######################################
+modelBuilder
+.Entity<Endereco>()
+.ToTable("Enderecos");
+
+
+############################################
+AULA 08 Recuperando objetos relacionados  
+ultima aula.
+############################################
+	
+:: 01 Aplicando  condições nas consultas :::
+
+
+METODOS:
+Include 	-> Para pegar a tabela relacionada.
+ThenInclude ->Pra pegar no segundo nivel para fazero join...
+Load   -> carrega o relacionamento em uma instancia uqe ja foi recuperada.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
